@@ -75,7 +75,7 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        final Context context = this;
+        final Activity context = this;
 
         // find para views ancitivty main
         hits = findViewById(R.id.hits);
@@ -85,15 +85,14 @@ public class MainActivity extends AppCompatActivity {
 
         // para hacer funcionar el buscador en algolia
         searcher = Searcher.create(ALGOLIA_APP_ID, ALGOLIA_SEARCH_API_KEY, ALGOLIA_INDEX_NAME);
-        helper = new InstantSearch(this, searcher);
-        helper.search();
 
         //para dar funcionamiento al progresbar y mostar el recycler(hits)
         xd = new SearchView.OnQueryTextListener() {
 
             @Override
             public boolean onQueryTextSubmit(String s) {
-                hits.setVisibility(View.VISIBLE);
+                hits.setVisibility(View.VISIBLE);helper = new InstantSearch(context, searcher);
+                helper.search();
                 progresbarr();
                 return false;
             }
