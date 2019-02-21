@@ -11,21 +11,29 @@ import android.support.annotation.RequiresApi;
 import android.support.constraint.ConstraintLayout;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.SearchView;
+import android.text.Editable;
 import android.text.Layout;
+import android.text.TextWatcher;
 import android.util.Log;
+import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.inputmethod.EditorInfo;
 import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ProgressBar;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.algolia.instantsearch.core.events.QueryTextChangeEvent;
 import com.algolia.instantsearch.core.events.ResultEvent;
 import com.algolia.instantsearch.core.helpers.Searcher;
 import com.algolia.instantsearch.ui.helpers.InstantSearch;
+import com.algolia.instantsearch.ui.utils.ItemClickSupport;
 import com.algolia.instantsearch.ui.views.Hits;
 import com.algolia.instantsearch.ui.views.SearchBox;
 import com.algolia.search.saas.AlgoliaException;
@@ -40,6 +48,7 @@ import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QuerySnapshot;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -60,15 +69,15 @@ public class MainActivity extends AppCompatActivity {
     SearchBox box;
     ProgressBar progressBar;
     ConstraintLayout layaut;
+    EditText edtBuscar;
 
     //variable para Algolia
     Searcher searcher;
 
     //Variables para funcionamiento
-     InstantSearch helper;
+    InstantSearch helper;
     private int progressStatus = 0;
     private Handler handler = new Handler();
-    SearchView.OnQueryTextListener xd;
 
 
     protected void onCreate(Bundle savedInstanceState) {
@@ -82,31 +91,29 @@ public class MainActivity extends AppCompatActivity {
         box = findViewById(R.id.searchBox);
         progressBar = findViewById(R.id.progressBar);
         layaut = findViewById(R.id.contrain);
+        edtBuscar = findViewById(R.id.edt_buscar);
 
         // para hacer funcionar el buscador en algolia
         searcher = Searcher.create(ALGOLIA_APP_ID, ALGOLIA_SEARCH_API_KEY, ALGOLIA_INDEX_NAME);
+        helper = new InstantSearch(context, searcher);
 
-        //para dar funcionamiento al progresbar y mostar el recycler(hits)
-        xd = new SearchView.OnQueryTextListener() {
-
+        // para que el seacher trabae por medio del edidtext
+        edtBuscar.setOnKeyListener(new View.OnKeyListener() {
             @Override
-            public boolean onQueryTextSubmit(String s) {
-                hits.setVisibility(View.VISIBLE);helper = new InstantSearch(context, searcher);
-                helper.search();
-                progresbarr();
+            public boolean onKey(View v, int keyCode, KeyEvent event) {
+                if (event.getAction() == KeyEvent.ACTION_DOWN) {
+                    switch (keyCode) {
+                        case KeyEvent.KEYCODE_DPAD_CENTER:
+                        case KeyEvent.KEYCODE_ENTER:
+                            realizarBusqueda();
+                            return true;
+                        default:
+                            break;
+                    }
+                }
                 return false;
             }
-            @Override
-            public boolean onQueryTextChange(String s) {
-                return false;
-            }
-        };
-
-
-
-        box.setOnQueryTextListener(xd);
-
-
+        });
 
 
         //para cerrar recycler cn cualquier click afuera
@@ -116,15 +123,39 @@ public class MainActivity extends AppCompatActivity {
                 if (hits.getVisibility() == View.VISIBLE) {
                     hits.setVisibility(View.INVISIBLE);
                     progressBar.setVisibility(View.INVISIBLE);
-                    box.setOnQueryTextListener(xd);
-
                 }
-
             }
         });
 
+        //para dar oncliklistener a los pruductos encontrados
+        hits.setOnItemClickListener(new ItemClickSupport.OnItemClickListener() {
+            @Override
+            public void onItemClick(RecyclerView recyclerView, int position, View v) {
+                JSONObject hit = hits.get(position);
+                String ola = (String) hit.opt("objectID");
+
+                if (ola == null) {
+                    Toast.makeText(context, "Producto no encontrado", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                Toast.makeText(context, "Producto Id " + ola, Toast.LENGTH_SHORT).show();
+            }
+        });
 
     }
+
+    //metodo par realizar la bustuqueda, espeficificamente a utilizar el String que nos da el Edittext
+    private void realizarBusqueda() {
+        if (edtBuscar.getText().toString().isEmpty()) return;
+        String palabra = edtBuscar.getText().toString();
+        helper.enableProgressBar();
+        helper.search(palabra);
+        hits.setVisibility(View.VISIBLE);
+        progresbarr();
+
+
+    }
+
     //para dar funcion al progresbar durante 3 segundos
     void progresbarr() {
         new Thread(new Runnable() {
@@ -157,8 +188,6 @@ public class MainActivity extends AppCompatActivity {
         if (hits.getVisibility() == View.VISIBLE) {
             hits.setVisibility(View.INVISIBLE);
             progressBar.setVisibility(View.INVISIBLE);
-
-            box.setOnQueryTextListener(xd);
         } else {
             super.onBackPressed();
         }
@@ -171,6 +200,8 @@ public class MainActivity extends AppCompatActivity {
         searcher.destroy();
         super.onDestroy();
     }
+
+    //=====================================Metodos Para el onclick en el recylcerview===================
 
 
 }
